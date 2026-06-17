@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Competitive Circle Simulator – Full Fidelity</title>
+  <style>
+    /* ---- LAYOUT ---- */
+    body { font-family: system-ui, sans-serif; margin: 0; display: flex; height: 100vh; background: #f1f5f9; }
+    #sidebar { width: 380px; background: white; padding: 15px; box-shadow: 2px 0 8px rgba(0,0,0,0.1); overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+    #board-area { flex: 1; display: flex; align-items: center; justify-content: center; background: #e2e8f0; }
+    canvas { background: white; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); cursor: crosshair; }
+    h2, h3 { margin: 0 0 5px 0; color: #0f172a; }
+    hr { margin: 10px 0; border: 1px solid #e2e8f0; }
+    label { font-size: 0.85rem; display: block; margin-top: 5px; font-weight: 500; }
+    select, input[type=range], input[type=text], input[type=number] { width: 100%; margin-bottom: 4px; padding: 4px; border: 1px solid #cbd5e1; border-radius: 4px; }
+    button { background: #2563eb; color: white; border: none; padding: 6px 12px; border-radius: 5px; cursor: pointer; font-size: 0.85rem; margin: 3px 2px; }
+    button:hover { background: #1d4ed8; }
+    .btn-danger { background: #dc2626; }
+    .btn-danger:hover { background: #b91c1c; }
+    .btn-sm { padding: 4px 8px; font-size: 0.75rem; }
+    .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .team-badge { display: inline-block; width: 16px; height: 16px; border-radius: 50%; border: 1px solid #333; }
+    #log { max-height: 200px; overflow-y: auto; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px; padding: 5px; font-size: 0.8rem; }
+    .log-entry { margin-bottom: 4px; border-bottom: 1px dotted #ddd; padding-bottom: 3px; }
+    .tab-nav { display: flex; gap: 5px; margin-bottom: 8px; }
+    .tab-btn { flex: 1; padding: 6px; border: 1px solid #cbd5e1; background: #f1f5f9; cursor: pointer; border-radius: 5px 5px 0 0; text-align: center; font-size: 0.8rem; }
+    .tab-btn.active { background: white; border-bottom: none; font-weight: bold; }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+    .dim-slider { display: flex; align-items: center; gap: 8px; }
+    .dim-slider label { min-width: 120px; }
+    .dim-slider span { min-width: 30px; }
+    .marble-label-input { width: 80px; }
+  </style>
+</head>
+<body>
+<div id="sidebar">
+  <h2>⭕ Competitive Circle</h2>
+  <div class="tab-nav">
+    <button class="tab-btn active" data-tab="calibration">Calibration</button>
+    <button class="tab-btn" data-tab="placement">Placement</button>
+    <button class="tab-btn" data-tab="simulation">Simulation</button>
+    <button class="tab-btn" data-tab="archetypes">Archetype Maker</button>
+  </div>
+
+  <!-- CALIBRATION TAB -->
+  <div class="tab-panel active" id="tab-calibration">
+    <h3>Terrain Friction (AT)</h3>
+    <input type="range" id="at" min="1" max="5" value="3"><span id="at-val">3</span>
+    <h3>Strategic Force Field</h3>
+    <label>Center Gravity (Your Co.) <input type="range" id="cg-self" min="0" max="3" value="2"></label>
+    <label>Center Gravity (Competitor) <input type="range" id="cg-comp" min="0" max="3" value="2"></label>
+    <label>Loyalty Friction <input type="range" id="loyalty" min="0" max="3" value="2"></label>
+    <label>Regulatory Wind <input type="range" id="regwind" min="0" max="3" value="1"></label>
+    <label>Narrative Tension <input type="range" id="narrative" min="0" max="3" value="2"></label>
+    <label>Organizational Inertia (Your Co.) <input type="range" id="oi-self" min="0" max="3" value="2"></label>
+    <label>Organizational Inertia (Competitor) <input type="range" id="oi-comp" min="0" max="3" value="2"></label>
+    <label>Shareholder Pressure <input type="range" id="shareholder" min="0" max="3" value="2"></label>
+    <label>Talent Field <input type="range" id="talent" min="0" max="3" value="2"></label>
+  </div>
+
+  <!-- PLACEMENT TAB -->
+  <div class="tab-panel" id="tab-placement">
+    <h3>Teams & Marbles</h3>
+    <div class="row"><button onclick="addMarble('player')">+ Player Marble</button><button onclick="addMarble('adversary')">+ Adversary Marble</button></div>
+    <label>Marble Label: <input type="text" id="marbleLabel" placeholder="e.g., Core ERP"></label>
+    <button onclick="updateSelectedMarbleLabel()">Set Label</button>
+    <h3>Stickers (select a marble first)</h3>
+    <div class="row">
+      <label>Vulnerability: <select id="vuln"><option value="">None</option><option value="high">High</option><option value="low">Low</option></select></label>
+      <label>Profitability: <select id="profit"><option value="">None</option><option value="loss">Loss</option><option value="break">Break‑even</option><option value="profit">Profitable</option></select></label>
+      <label>MDI: <select id="mdi"><option value="">None</option><option value="low">Low</option><option value="med">Medium</option><option value="high">High</option></select></label>
+    </div>
+    <div class="row">
+      <label><input type="checkbox" id="sm"> Strategic Mass</label>
+      <label><input type="checkbox" id="anchor"> Anchor</label>
+    </div>
+    <button onclick="applyStickers()">Apply to Selected</button>
+    <hr>
+    <h3>Dependency Arrows</h3>
+    <div class="row">
+      <button id="arrowBtn" onclick="toggleArrowMode()">Draw Arrow (Solid)</button>
+      <select id="arrowType"><option value="solid">Solid</option><option value="dashed">Dashed</option></select>
+    </div>
+    <button onclick="clearArrows()">Clear Arrows</button>
+    <hr>
+    <button onclick="resetBoard()">Reset Board</button>
+  </div>
+
+  <!-- SIMULATION TAB -->
+  <div class="tab-panel" id="tab-simulation">
+    <h3>Your Move</h3>
+    <div id="config-display" style="font-weight:bold; margin-bottom:10px; background:#e2e8f0; padding:4px 8px; border-radius:4px;"></div>
+    <label>Shooter: <select id="shooterSelect"><option value="">-- select marble --</option></select></label>
+    <label>Target (optional): <select id="targetSelect"><option value="">-- none (reposition) --</option></select></label>
+    <label>Impulse Power: <select id="ip"><option value="low">Low</option><option value="med">Medium</option><option value="high">High</option></select></label>
+    <label>Angle of Incidence: <select id="ai"><option value="radial">Radial</option><option value="tangential">Tangential</option></select></label>
+    <label>Intention: <select id="intention"><option value="eliminate">Eliminate</option><option value="reposition">Reposition</option><option value="breakCluster">Break Cluster</option><option value="defend">Defend</option></select></label>
+    <div class="row">
+      <button onclick="executePlayerMove()">Execute Move</button>
+      <button onclick="statusQuo()">Status Quo (Do Nothing)</button>
+    </div>
+    <hr>
+    <h3>Adversary Response</h3>
+    <p id="adversaryInfo">Archetype profile loaded from Archetype Maker tab.</p>
+    <button onclick="executeAdversaryTurn()">Force Adversary Turn</button>
+    <hr>
+    <h3>Move Log & Translation</h3>
+    <div id="log"></div>
+    <button onclick="clearLog()">Clear Log</button>
+  </div>
+
+  <!-- ARCHETYPE MAKER TAB -->
+  <div class="tab-panel" id="tab-archetypes">
+    <h3>Adversary Archetype Profile (14 dimensions, ordinal)</h3>
+    <p><strong>Warning:</strong> Ratings are ordinal labels, not numbers for math. They guide behavior qualitatively.</p>
+    <div id="archetypeSliders"></div>
+    <div class="row">
+      <button onclick="loadPredefinedArchetype('sleepy')">Sleepy Goliath</button>
+      <button onclick="loadPredefinedArchetype('impulsive')">Impulsive Predator</button>
+      <button onclick="loadPredefinedArchetype('cold')">Cold Rational</button>
+      <button onclick="loadPredefinedArchetype('custom')">Custom (all 3s)</button>
+    </div>
+    <button onclick="saveArchetypeProfile()">Apply Profile to Adversary</button>
+  </div>
+
+  <hr>
+  <button onclick="exportState()">Export Session (JSON)</button>
+  <button onclick="importState()">Import Session</button>
+</div>
+
+<div id="board-area">
+  <canvas id="canvas" width="700" height="700"></canvas>
+</div>
+
+<script>
+  // ==================== GAME STATE ====================
+  const canvas = document.getElementById('canvas');
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  const CENTER = { x: W/2, y: H/2 };
+  const RADIUS = 300;
+  const DEATH_PCT = 0.8, POWER_PCT = 0.2;
+
+  let marbles = [];        // {id, team, x, y, r:14, label, stickers:{vuln, profit, mdi, sm, anchor}}
+  let arrows = [];        // {fromId, toId, type}
+  let selectedMarble = null;
+  let arrowMode = false, arrowFrom = null;
+  let nextId = 1;
+  let gameLog = [];
+
+  // SFF values (simplified as global, but could be per-team)
+  let sff = {
+    at: 3, cgSelf: 2, cgComp: 2, loyalty: 2, regWind: 1,
+    narrative: 2, oiSelf: 2, oiComp: 2, shareholder: 2, talent: 2
+  };
+
+  // Adversary archetype profile (14 dimensions, ordinal 1-5)
+  let adversaryProfile = {
+    aggressiveness: 2, responseSpeed: 2, riskTolerance: 2, focusOfAttack: 3,
+    predictability: 4, emotionality: 1, strategicHorizon: 4, organizationalAgility: 1,
+    collaborativeTendency: 2, responseToThreat: 3, adaptability: 2, transparency: 2,
+    resourceConservation: 4, learningOrientation: 2
+  };
+
+  // Adversary turn counter (for delayed reactions)
+  let adversaryDelayCounter = 0;
+
+  // ==================== CANVAS DRAWING ====================
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    // circle
+    ctx.beginPath(); ctx.arc(CENTER.x, CENTER.y, RADIUS, 0, Math.PI*2);
+    ctx.strokeStyle = '#333'; ctx.lineWidth = 3; ctx.stroke();
+    // death zone
+    ctx.beginPath(); ctx.arc(CENTER.x, CENTER.y, RADIUS*DEATH_PCT, 0, Math.PI*2);
+    ctx.setLineDash([8,8]); ctx.strokeStyle = 'red'; ctx.lineWidth = 2; ctx.stroke();
+    ctx.setLineDash([]);
+    // power zone
+    ctx.beginPath(); ctx.arc(CENTER.x, CENTER.y, RADIUS*POWER_PCT, 0, Math.PI*2);
+    ctx.strokeStyle = 'blue'; ctx.lineWidth = 2; ctx.stroke();
+    // arrows
+    arrows.forEach(a => {
+      let from = marbles.find(m=>m.id===a.fromId), to = marbles.find(m=>m.id===a.toId);
+      if(!from||!to) return;
+      ctx.beginPath(); ctx.moveTo(from.x,from.y); ctx.lineTo(to.x,to.y);
+      ctx.strokeStyle = a.type==='dashed' ? '#666' : '#000';
+      ctx.setLineDash(a.type==='dashed'?[6,4]:[]); ctx.lineWidth=2; ctx.stroke();
+      ctx.setLineDash([]);
+      // arrowhead
+      let angle = Math.atan2(to.y-from.y,to.x-from.x);
+      let hx = to.x - Math.cos(angle)*(to.r+3), hy = to.y - Math.sin(angle)*(to.r+3);
+      ctx.beginPath(); ctx.moveTo(hx,hy);
+      ctx.lineTo(hx-8*Math.cos(angle-Math.PI/6), hy-8*Math.sin(angle-Math.PI/6));
+      ctx.lineTo(hx-8*Math.cos(angle+Math.PI/6), hy-8*Math.sin(angle+Math.PI/6));
+      ctx.fillStyle='#000'; ctx.fill();
+    });
+    // marbles
+    marbles.forEach(m => {
+      ctx.beginPath(); ctx.arc(m.x,m.y,m.r,0,Math.PI*2);
+      ctx.fillStyle = m.team==='player' ? '#2563eb' : '#dc2626';
+      ctx.fill(); ctx.strokeStyle='#333'; ctx.lineWidth=1.5; ctx.stroke();
+      if(m.stickers.vuln==='high'){ctx.beginPath();ctx.arc(m.x,m.y,m.r+3,0,Math.PI*2);ctx.strokeStyle='red';ctx.lineWidth=2;ctx.stroke();}
+      if(m.stickers.vuln==='low'){ctx.beginPath();ctx.arc(m.x,m.y,m.r+3,0,Math.PI*2);ctx.strokeStyle='blue';ctx.lineWidth=2;ctx.stroke();}
+      if(m.stickers.profit){ctx.beginPath();ctx.arc(m.x,m.y,5,0,Math.PI*2);ctx.fillStyle={loss:'red',break:'yellow',profit:'green'}[m.stickers.profit]||'black';ctx.fill();}
+      if(m.stickers.mdi){ctx.font='bold 9px sans-serif';ctx.fillStyle='#000';ctx.fillText(m.stickers.mdi.toUpperCase(),m.x+m.r+4,m.y-4);}
+      if(m.stickers.sm){drawStar(m.x,m.y-m.r-4,5,8,4,'gold');}
+      if(m.stickers.anchor){drawStar(m.x+m.r+4,m.y,5,8,4,'silver');}
+      if(m.label){ctx.font='10px sans-serif';ctx.fillStyle='#000';ctx.fillText(m.label,m.x-10,m.y-m.r-8);}
+      if(selectedMarble && selectedMarble.id===m.id){ctx.beginPath();ctx.arc(m.x,m.y,m.r+5,0,Math.PI*2);ctx.strokeStyle='#facc15';ctx.lineWidth=2;ctx.stroke();}
+    });
+    updateConfigurationDisplay();
+  }
+  // ==================== CONFIGURATION DETECTION ====================
+function detectConfiguration() {
+  const playerMarbles = marbles.filter(m => m.team === 'player');
+  const advMarbles = marbles.filter(m => m.team === 'adversary');
+  if (playerMarbles.length === 0 || advMarbles.length === 0) return 'Unknown';
+
+  // Helper: average distance from center
+  const avgDist = (arr) => arr.reduce((s,m) => s + dist(m.x,m.y,CENTER.x,CENTER.y), 0) / arr.length;
+  const playerAvg = avgDist(playerMarbles);
+  const advAvg = avgDist(advMarbles);
+
+  // Helper: clustering measure (std dev of distances)
+  const stdDist = (arr) => {
+    const avg = avgDist(arr);
+    const variance = arr.reduce((s,m) => s + Math.pow(dist(m.x,m.y,CENTER.x,CENTER.y)-avg,2), 0) / arr.length;
+    return Math.sqrt(variance);
+  };
+
+  // Check Concentrated Core: one team tightly clustered in Power Zone, other scattered
+  if (playerAvg < RADIUS * 0.3 && advAvg > RADIUS * 0.6) return 'Concentrated Core (Player dominant)';
+  if (advAvg < RADIUS * 0.3 && playerAvg > RADIUS * 0.6) return 'Concentrated Core (Adversary dominant)';
+
+  // Bipolar: both tight clusters near center but separated
+  if (playerAvg < RADIUS * 0.5 && advAvg < RADIUS * 0.5 &&
+      stdDist(playerMarbles) < 50 && stdDist(advMarbles) < 50) {
+    return 'Bipolar Confrontation';
+  }
+
+  // Perimeter Defense: one team forms ring near Death Zone
+  if (playerAvg > RADIUS * 0.7 && advAvg < RADIUS * 0.4) return 'Perimeter Defense (Player Ring)';
+  if (advAvg > RADIUS * 0.7 && playerAvg < RADIUS * 0.4) return 'Perimeter Defense (Adversary Ring)';
+
+  // Infiltration: marbles intermingled (average team distance small)
+  let interTeamDist = 0, count = 0;
+  playerMarbles.forEach(pm => {
+    advMarbles.forEach(am => {
+      interTeamDist += dist(pm.x,pm.y,am.x,am.y);
+      count++;
+    });
+  });
+  interTeamDist /= count;
+  if (interTeamDist < 80) return 'Infiltration (Mixture)';
+
+  // Asymmetry: huge difference in marble count
+  if (Math.abs(playerMarbles.length - advMarbles.length) >= 3) return 'Critical Numerical Asymmetry';
+
+  // Default
+  return 'Homogeneous Dispersion';
+}
+
+function updateConfigurationDisplay() {
+  const config = detectConfiguration();
+  const display = document.getElementById('config-display');
+  if (display) display.innerText = `Configuration: ${config}`;
+}
+  function drawStar(cx,cy,spikes,outerR,innerR,color){let rot=Math.PI/2*3,step=Math.PI/spikes;ctx.beginPath();for(let i=0;i<spikes;i++){ctx.lineTo(cx+Math.cos(rot)*outerR,cy+Math.sin(rot)*outerR);rot+=step;ctx.lineTo(cx+Math.cos(rot)*innerR,cy+Math.sin(rot)*innerR);rot+=step;}ctx.closePath();ctx.fillStyle=color;ctx.fill();ctx.strokeStyle='#333';ctx.lineWidth=0.5;ctx.stroke();}
+
+  // ==================== HELPERS ====================
+  function dist(x1,y1,x2,y2){return Math.hypot(x1-x2,y1-y2);}
+  function zoneOfMarble(m){let d=dist(m.x,m.y,CENTER.x,CENTER.y);return d<=RADIUS*POWER_PCT?'Power':d<=RADIUS*DEATH_PCT?'Maneuver':'Death';}
+  function findMarble(id){return marbles.find(m=>m.id===id);}
+  function findMarbleAt(x,y){for(let i=marbles.length-1;i>=0;i--){let m=marbles[i];if(dist(m.x,m.y,x,y)<=m.r+3)return m;}return null;}
+
+  // ==================== MARBLE MANAGEMENT ====================
+  function addMarble(team){let angle=Math.random()*Math.PI*2,dist=RADIUS*0.4+Math.random()*RADIUS*0.4;let x=CENTER.x+Math.cos(angle)*dist,y=CENTER.y+Math.sin(angle)*dist;marbles.push({id:nextId++,team,x,y,r:14,label:'',stickers:{}});selectedMarble=null;draw();updateShooterTargetLists(); updateConfigurationDisplay();}
+  function applyStickers(){if(!selectedMarble){alert('Select a marble');return;}let m=selectedMarble;m.stickers.vuln=document.getElementById('vuln').value||undefined;m.stickers.profit=document.getElementById('profit').value||undefined;m.stickers.mdi=document.getElementById('mdi').value||undefined;m.stickers.sm=document.getElementById('sm').checked;m.stickers.anchor=document.getElementById('anchor').checked;draw();}
+  function updateSelectedMarbleLabel(){if(!selectedMarble)return;selectedMarble.label=document.getElementById('marbleLabel').value;draw();}
+
+  // ==================== ARROWS ====================
+  function toggleArrowMode(){arrowMode=!arrowMode;document.getElementById('arrowBtn').textContent=arrowMode?'Drawing... (click source then target)':'Draw Arrow (Solid)';arrowFrom=null;}
+  function clearArrows(){arrows=[];draw();}
+  canvas.addEventListener('mousedown',e=>{
+    let rect=canvas.getBoundingClientRect(),mx=e.clientX-rect.left,my=e.clientY-rect.top;
+    if(arrowMode){
+      let m=findMarbleAt(mx,my); if(m){if(!arrowFrom){arrowFrom=m.id;}else{arrows.push({fromId:arrowFrom,toId:m.id,type:document.getElementById('arrowType').value});arrowFrom=null;arrowMode=false;document.getElementById('arrowBtn').textContent='Draw Arrow (Solid)';draw();}}
+      return;
+    }
+    let m=findMarbleAt(mx,my);
+    if(m){selectedMarble=m;draw(); let onMove=ev=>{let rx=ev.clientX-rect.left,ry=ev.clientY-rect.top;if(dist(rx,ry,CENTER.x,CENTER.y)<=RADIUS-m.r){m.x=rx;m.y=ry;}draw();};let onUp=()=>{canvas.removeEventListener('mousemove',onMove);canvas.removeEventListener('mouseup',onUp);};canvas.addEventListener('mousemove',onMove);canvas.addEventListener('mouseup',onUp);}
+    else{selectedMarble=null;draw();}
+  });
+
+  // ==================== SIMULATION ENGINE ====================
+  function getEffectiveMoveProbability(shooter,target,ip,ai){
+    let base=0; if(ip==='low')base=0.4; else if(ip==='med')base=0.65; else base=0.85;
+    let loyaltyMod = (sff.loyalty/3)*0.3; // loyalty reduces success
+    let cgDefender = target.team==='adversary'? sff.cgComp : sff.cgSelf;
+    let cgMod = cgDefender/3 * 0.2; // defender's CG reduces attacker success
+    let aiMod = ai==='tangential'? -0.1 : 0; // tangential is less decisive
+    let probability = base - loyaltyMod - cgMod + aiMod;
+    if(target.stickers.vuln==='high') probability+=0.1;
+    if(target.stickers.vuln==='low') probability-=0.15;
+    return Math.max(0.1, Math.min(0.95, probability));
+  }
+  function translateOutcome(logEntry) {
+  let translation = '';
+  const ipMap = {low: 'incremental', med: 'significant', high: 'radical'};
+  const aiMap = {radial: 'direct attack', tangential: 'indirect maneuver'};
+
+  if (!logEntry.target && logEntry.intention === 'reposition') {
+    translation = 'Internal realignment – resource repositioned.';
+    if (logEntry.result.includes('eliminated')) translation += ' The repositioning failed catastrophically (resource left the market).';
+  } else if (logEntry.target) {
+    translation = `${ipMap[logEntry.ip]} ${aiMap[logEntry.ai]} against opponent asset. `;
+    if (logEntry.result.includes('Target eliminated')) {
+      translation += 'Opponent asset neutralized. ';
+      if (logEntry.details.includes('Cascade')) translation += 'Hidden dependencies triggered a chain reaction. ';
+      if (logEntry.details.includes('Shooter also eliminated')) translation += 'However, your attacking resource was also lost (pyrrhic victory). ';
+    } else if (logEntry.result.includes('Target survived')) {
+      translation += 'The attack failed to dislodge the target. Competitor loyalty or friction resisted the move. ';
+      if (logEntry.details.includes('Shooter eliminated')) translation += 'Your resource was destroyed in the failed attempt. ';
+    }
+  }
+  if (logEntry.result.includes('Status Quo')) {
+    translation = 'No strategic action taken. The market drifted due to structural forces.';
+  }
+  return translation;
+  }
+  function resolveMove(shooter,target,ip,ai,intention,isPlayerMove=true){
+    let logEntry={turn:gameLog.length+1,shooter:shooter.id,target:target?target.id:null,ip,ai,intention,result:'',details:''};
+    if(!target && intention==='reposition'){
+      // reposition: move shooter towards a chosen zone (simplified: move inward)
+      let angle=Math.atan2(CENTER.y-shooter.y,CENTER.x-shooter.x);
+      let dist=ip==='low'?20:ip==='med'?50:80;
+      shooter.x+=Math.cos(angle)*dist; shooter.y+=Math.sin(angle)*dist;
+      if(dist(shooter.x,shooter.y,CENTER.x,CENTER.y)>RADIUS-shooter.r){shooter.alive=false;marbles=marbles.filter(m=>m.id!==shooter.id);logEntry.result='Shooter eliminated (exited circle)';}
+      else{logEntry.result='Repositioned';}
+    }else if(target){
+      let prob = getEffectiveMoveProbability(shooter,target,ip,ai);
+      let success = Math.random()<prob;
+      if(success){
+        // eliminate target
+        marbles=marbles.filter(m=>m.id!==target.id);
+        logEntry.result='Target eliminated';
+        // cascade: follow solid arrows from target
+        arrows.filter(a=>a.fromId===target.id).forEach(a=>{
+          let dep=findMarble(a.toId); if(dep){
+            let d=dist(dep.x,dep.y,CENTER.x,CENTER.y);
+            let newDist = d + (ip==='low'?30:ip==='med'?60:100);
+            let angle=Math.atan2(dep.y-CENTER.y,dep.x-CENTER.x);
+            dep.x=CENTER.x+Math.cos(angle)*newDist; dep.y=CENTER.y+Math.sin(angle)*newDist;
+            if(dist(dep.x,dep.y,CENTER.x,CENTER.y)>RADIUS-dep.r){marbles=marbles.filter(m=>m.id!==dep.id);logEntry.details+='Cascade: '+dep.label+' eliminated. ';}
+            else{logEntry.details+='Cascade: '+dep.label+' displaced. ';}
+          }
+        });
+        // shooter risk (high IP)
+        if(ip==='high' && Math.random()<0.6){marbles=marbles.filter(m=>m.id!==shooter.id);logEntry.details+='Shooter also eliminated (high risk).';}
+      }else{
+        logEntry.result='Target survived';
+        // sometimes shooter is counter-hit
+        if(ip==='high' && Math.random()<0.3){marbles=marbles.filter(m=>m.id!==shooter.id);logEntry.details='Shooter eliminated in failed attack.';}
+      }
+    }
+    gameLog.push(logEntry);
+    logEntry.translation = translateOutcome(logEntry);
+    updateLog();
+    draw();
+    updateShooterTargetLists();
+    updateConfigurationDisplay();
+  }
+  function executePlayerMove(){
+    let shooterId=parseInt(document.getElementById('shooterSelect').value);
+    let targetId=document.getElementById('targetSelect').value?parseInt(document.getElementById('targetSelect').value):null;
+    let ip=document.getElementById('ip').value, ai=document.getElementById('ai').value, intention=document.getElementById('intention').value;
+    if(!shooterId){alert('Select a shooter');return;}
+    let shooter=findMarble(shooterId); if(!shooter)return;
+    let target=targetId?findMarble(targetId):null;
+    resolveMove(shooter,target,ip,ai,intention,true);
+    // After player move, adversary may react based on profile
+    if(adversaryDelayCounter>0){adversaryDelayCounter--;return;}
+    let reactNow = adversaryProfile.responseSpeed>=4 || (adversaryProfile.responseSpeed>=3 && target);
+    if(reactNow){executeAdversaryTurn();}
+  }
+  function statusQuo(){gameLog.push({turn:gameLog.length+1,result:'Status Quo – no action taken.',details:'Board drifts naturally; Predatory Gravity applied.'});applyPredatoryGravity();updateLog();}
+  function executeAdversaryTurn(){
+    // simple adversary AI based on archetype dimensions
+    let ownMarbles=marbles.filter(m=>m.team==='adversary'),playerMarbles=marbles.filter(m=>m.team==='player');
+    if(ownMarbles.length===0||playerMarbles.length===0)return;
+    // aggressiveness: probability of attacking
+    let agg=adversaryProfile.aggressiveness/5;
+    if(Math.random()<agg){
+      let shooter=ownMarbles[Math.floor(Math.random()*ownMarbles.length)];
+      let targets=playerMarbles;
+      // focus of attack: prefer high-value targets
+      if(adversaryProfile.focusOfAttack>=4){targets=playerMarbles.filter(m=>m.stickers.sm||m.stickers.anchor);if(targets.length===0)targets=playerMarbles;}
+      let target=targets[Math.floor(Math.random()*targets.length)];
+      let ip=adversaryProfile.riskTolerance>=4?'high':(adversaryProfile.riskTolerance<=2?'low':'med');
+      let ai='radial';
+      resolveMove(shooter,target,ip,ai,'eliminate',false);
+    }
+    applyPredatoryGravity();
+  }
+  function applyPredatoryGravity(){
+    marbles.forEach(m=>{
+      if(m.team==='player' && sff.cgComp===3 && zoneOfMarble(m)!=='Death'){
+        if(dist(m.x,m.y,CENTER.x,CENTER.y)>RADIUS*POWER_PCT){ // in maneuver or power, drift outward
+          let angle=Math.atan2(m.y-CENTER.y,m.x-CENTER.x);
+          let drift=20;
+          m.x+=Math.cos(angle)*drift; m.y+=Math.sin(angle)*drift;
+          if(dist(m.x,m.y,CENTER.x,CENTER.y)>RADIUS-m.r){marbles=marbles.filter(x=>x.id!==m.id);gameLog.push({result:'Predatory Gravity: '+m.label+' eliminated.'});}
+        }
+      }
+    });
+    draw();
+  }
+
+  // ==================== UI HELPERS ====================
+  function updateShooterTargetLists(){
+    let shooterSel=document.getElementById('shooterSelect'),targetSel=document.getElementById('targetSelect');
+    shooterSel.innerHTML='<option value="">-- select marble --</option>';
+    targetSel.innerHTML='<option value="">-- none (reposition) --</option>';
+    marbles.forEach(m=>{let opt=`<option value="${m.id}">${m.label||'Marble '+m.id} (${m.team})</option>`;shooterSel.innerHTML+=opt;targetSel.innerHTML+=opt;});
+  }
+  function updateLog(){
+    let logDiv=document.getElementById('log');
+    logDiv.innerHTML = gameLog.slice(-10).map(e => `<div class="log-entry"><b>Turn ${e.turn}:</b> ${e.result}<br><i style="color:#475569;">${e.translation||''}</i> ${e.details||''}</div>`).join(''); class="log-entry"><b>Turn ${e.turn}:</b> ${e.result} ${e.details||''}</div>`).join('');
+  }
+  function clearLog(){gameLog=[];updateLog();}
+  function resetBoard(){marbles=[];arrows=[];selectedMarble=null;gameLog=[];draw();updateShooterTargetLists();updateLog();updateConfigurationDisplay();}
+
+  // ==================== ARCHETYPE MAKER ====================
+  const dimNames=['Aggressiveness','Response Speed','Risk Tolerance','Focus of Attack','Predictability','Emotionality','Strategic Horizon','Organizational Agility','Collaborative Tendency','Response to Threat','Adaptability','Transparency','Resource Conservation','Learning Orientation'];
+  const dimKeys=['aggressiveness','responseSpeed','riskTolerance','focusOfAttack','predictability','emotionality','strategicHorizon','organizationalAgility','collaborativeTendency','responseToThreat','adaptability','transparency','resourceConservation','learningOrientation'];
+  function buildArchetypeSliders(){
+    let container=document.getElementById('archetypeSliders');
+    container.innerHTML='';
+    dimKeys.forEach((key,i)=>{
+      let div=document.createElement('div'); div.className='dim-slider';
+      let label=document.createElement('label'); label.textContent=dimNames[i];
+      let slider=document.createElement('input'); slider.type='range'; slider.min=1; slider.max=5; slider.value=adversaryProfile[key]; slider.id='dim-'+i;
+      let span=document.createElement('span'); span.textContent=slider.value;
+      slider.addEventListener('input',()=>{span.textContent=slider.value;});
+      div.appendChild(label); div.appendChild(slider); div.appendChild(span);
+      container.appendChild(div);
+    });
+  }
+  function saveArchetypeProfile(){
+    dimKeys.forEach((key,i)=>{adversaryProfile[key]=parseInt(document.getElementById('dim-'+i).value);});
+    alert('Adversary profile updated!');
+  }
+  function loadPredefinedArchetype(type){
+    const profiles={
+      sleepy:{aggressiveness:2,responseSpeed:2,riskTolerance:2,focusOfAttack:3,predictability:4,emotionality:1,strategicHorizon:4,organizationalAgility:1,collaborativeTendency:2,responseToThreat:3,adaptability:2,transparency:2,resourceConservation:4,learningOrientation:2},
+      impulsive:{aggressiveness:5,responseSpeed:5,riskTolerance:5,focusOfAttack:3,predictability:3,emotionality:3,strategicHorizon:2,organizationalAgility:3,collaborativeTendency:1,responseToThreat:5,adaptability:3,transparency:2,resourceConservation:1,learningOrientation:2},
+      cold:{aggressiveness:3,responseSpeed:3,riskTolerance:2,focusOfAttack:3,predictability:5,emotionality:1,strategicHorizon:4,organizationalAgility:3,collaborativeTendency:2,responseToThreat:3,adaptability:3,transparency:3,resourceConservation:3,learningOrientation:4},
+      custom:{}
+    };
+    let p=profiles[type]||{};
+    if(type==='custom'){for(let k of dimKeys)adversaryProfile[k]=3;}
+    else{Object.assign(adversaryProfile,p);}
+    buildArchetypeSliders();
+  }
+  buildArchetypeSliders();
+
+  // ==================== TAB SWITCHING ====================
+  document.querySelectorAll('.tab-btn').forEach(btn=>btn.addEventListener('click',function(){
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    this.classList.add('active');
+    document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+    document.getElementById('tab-'+this.dataset.tab).classList.add('active');
+  }));
+
+  // ==================== EXPORT/IMPORT ====================
+  function exportState(){
+    let state={marbles,arrows,sff,adversaryProfile,gameLog};
+    let json=JSON.stringify(state,null,2);
+    let blob=new Blob([json],{type:'application/json'});
+    let a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='competitive-circle-session.json'; a.click();
+  }
+  function importState(){
+    let input=document.createElement('input'); input.type='file'; input.accept='.json';
+    input.onchange=e=>{
+      let file=e.target.files[0];
+      let reader=new FileReader();
+      reader.onload=()=>{
+        let state=JSON.parse(reader.result);
+        marbles=state.marbles||[]; arrows=state.arrows||[]; sff=state.sff||sff; adversaryProfile=state.adversaryProfile||adversaryProfile; gameLog=state.gameLog||[];
+        draw(); updateShooterTargetLists(); updateLog(); buildArchetypeSliders();
+      };
+      reader.readAsText(file);
+    };
+    input.click();
+    updateConfigurationDisplay();
+  }
+
+  // Initialization
+  draw();
+  updateShooterTargetLists();
+</script>
+</body>
+  </html>
