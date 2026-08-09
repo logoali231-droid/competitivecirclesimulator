@@ -1,128 +1,170 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <title>Competitive Circle Simulator</title>
-  <style>
-    body { font-family: system-ui; margin:0; display:flex; height:100vh; background:#f1f5f9; }
-    #sidebar { width:380px; background:white; padding:15px; box-shadow:2px 0 8px rgba(0,0,0,0.1); overflow-y:auto; }
-    #board-area { flex:1; display:flex; align-items:center; justify-content:center; background:#e2e8f0; }
-    canvas { background:white; border-radius:8px; box-shadow:0 4px 12px rgba(0,0,0,0.1); cursor:crosshair; }
-    h2,h3 { color:#0f172a; }
-    label { font-size:0.85rem; display:block; margin-top:5px; font-weight:500; }
-    select, input[type=range], input[type=text] { width:100%; margin-bottom:4px; padding:4px; border:1px solid #cbd5e1; border-radius:4px; }
-    button { background:#2563eb; color:white; border:none; padding:6px 12px; border-radius:5px; cursor:pointer; font-size:0.85rem; margin:3px 2px; }
-    .row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
-    .tab-nav { display:flex; gap:5px; margin-bottom:8px; }
-    .tab-btn { flex:1; padding:6px; border:1px solid #cbd5e1; background:#f1f5f9; cursor:pointer; border-radius:5px 5px 0 0; text-align:center; font-size:0.8rem; }
-    .tab-btn.active { background:white; border-bottom:none; font-weight:bold; }
-    .tab-panel { display:none; }
-    .tab-panel.active { display:block; }
-    #log { max-height:200px; overflow-y:auto; background:#f8fafc; border:1px solid #e2e8f0; border-radius:4px; padding:5px; font-size:0.8rem; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Competitive Circle Simulator – Responsivo</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: system-ui, sans-serif; background: #f1f5f9; display: flex; flex-direction: column; height: 100vh; }
+        /* ---- cabeçalho para mobile ---- */
+        .mobile-tabs { display: none; }
+        @media (max-width: 768px) {
+            body { flex-direction: column; }
+            #sidebar { width: 100% !important; max-height: 40vh; overflow-y: auto; }
+            #board-area { width: 100%; height: 60vh; }
+            canvas { width: 100%; height: auto; max-width: 100vw; max-height: 60vh; }
+            .mobile-tabs { display: flex; gap: 4px; flex-wrap: wrap; background: white; padding: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+            .mobile-tabs button { flex: 1; padding: 8px; font-size: 0.7rem; }
+        }
+        /* ---- layout desktop ---- */
+        #sidebar { width: 380px; background: white; padding: 15px; box-shadow: 2px 0 8px rgba(0,0,0,0.1); overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+        #board-area { flex: 1; display: flex; align-items: center; justify-content: center; background: #e2e8f0; padding: 10px; }
+        canvas { background: white; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); cursor: crosshair; max-width: 100%; height: auto; }
+        h2, h3 { color: #0f172a; margin-bottom: 5px; }
+        hr { margin: 10px 0; border: 1px solid #e2e8f0; }
+        label { font-size: 0.85rem; display: block; margin-top: 5px; font-weight: 500; }
+        select, input[type=range], input[type=text], input[type=number] { width: 100%; margin-bottom: 4px; padding: 4px; border: 1px solid #cbd5e1; border-radius: 4px; }
+        button { background: #2563eb; color: white; border: none; padding: 6px 12px; border-radius: 5px; cursor: pointer; font-size: 0.85rem; margin: 3px 2px; }
+        button:hover { background: #1d4ed8; }
+        .btn-danger { background: #dc2626; }
+        .btn-danger:hover { background: #b91c1c; }
+        .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+        #log { max-height: 200px; overflow-y: auto; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px; padding: 5px; font-size: 0.8rem; }
+        .log-entry { margin-bottom: 4px; border-bottom: 1px dotted #ddd; padding-bottom: 3px; }
+        .tab-nav { display: flex; gap: 5px; margin-bottom: 8px; }
+        .tab-btn { flex: 1; padding: 6px; border: 1px solid #cbd5e1; background: #f1f5f9; cursor: pointer; border-radius: 5px 5px 0 0; text-align: center; font-size: 0.8rem; }
+        .tab-btn.active { background: white; border-bottom: none; font-weight: bold; }
+        .tab-panel { display: none; }
+        .tab-panel.active { display: block; }
+        .dim-slider { display: flex; align-items: center; gap: 8px; }
+        .dim-slider label { min-width: 120px; }
+        .dim-slider span { min-width: 30px; }
+        @media (max-width: 768px) {
+            .dim-slider label { min-width: 80px; font-size: 0.7rem; }
+            .dim-slider span { min-width: 20px; font-size: 0.7rem; }
+            button { padding: 8px 12px; font-size: 0.9rem; }
+        }
+    </style>
 </head>
 <body>
-  <div id="sidebar">
-    <h2>⭕ Competitive Circle</h2>
-    <div class="tab-nav">
-      <button class="tab-btn active" data-tab="calibration">Calibration</button>
-      <button class="tab-btn" data-tab="placement">Placement</button>
-      <button class="tab-btn" data-tab="simulation">Simulation</button>
-      <button class="tab-btn" data-tab="archetypes">Archetype Maker</button>
+    <!-- Mobile tab navigation (hidden on desktop) -->
+    <div class="mobile-tabs" id="mobileTabs">
+        <button class="tab-btn active" data-tab="calibration">Calibragem</button>
+        <button class="tab-btn" data-tab="placement">Tabuleiro</button>
+        <button class="tab-btn" data-tab="simulation">Simulação</button>
+        <button class="tab-btn" data-tab="archetypes">Archetypes</button>
     </div>
-    <!-- CALIBRATION TAB -->
-    <div class="tab-panel active" id="tab-calibration">
-      <h3>Terrain Friction (AT)</h3>
-      <input type="range" id="at" min="1" max="5" value="3"><span id="at-val">3</span>
-      <h3>Strategic Force Field</h3>
-      <label>Center Gravity (Your Co.) <input type="range" id="cg-self" min="0" max="3" value="2"></label>
-      <label>Center Gravity (Competitor) <input type="range" id="cg-comp" min="0" max="3" value="2"></label>
-      <label>Loyalty Friction <input type="range" id="loyalty" min="0" max="3" value="2"></label>
-      <label>Regulatory Wind <input type="range" id="regwind" min="0" max="3" value="1"></label>
-      <label>Narrative Tension <input type="range" id="narrative" min="0" max="3" value="2"></label>
-      <label>Org Inertia (Your Co.) <input type="range" id="oi-self" min="0" max="3" value="2"></label>
-      <label>Org Inertia (Competitor) <input type="range" id="oi-comp" min="0" max="3" value="2"></label>
-      <label>Shareholder Pressure <input type="range" id="shareholder" min="0" max="3" value="2"></label>
-      <label>Talent Field <input type="range" id="talent" min="0" max="3" value="2"></label>
+    <div style="display: flex; flex: 1; flex-direction: row; overflow: hidden;">
+        <div id="sidebar">
+            <h2>⭕ Competitive Circle</h2>
+            <div class="tab-nav" id="desktopTabs">
+                <button class="tab-btn active" data-tab="calibration">Calibragem</button>
+                <button class="tab-btn" data-tab="placement">Tabuleiro</button>
+                <button class="tab-btn" data-tab="simulation">Simulação</button>
+                <button class="tab-btn" data-tab="archetypes">Archetypes</button>
+            </div>
+            <!-- CALIBRATION TAB -->
+            <div class="tab-panel active" id="tab-calibration">
+                <h3>Terrain Friction (AT)</h3>
+                <input type="range" id="at" min="1" max="5" value="3"><span id="at-val">3</span>
+                <h3>Strategic Force Field</h3>
+                <label>Center Gravity (Sua Emp.) <input type="range" id="cg-self" min="0" max="3" value="2"></label>
+                <label>Center Gravity (Concorrente) <input type="range" id="cg-comp" min="0" max="3" value="2"></label>
+                <label>Loyalty Friction <input type="range" id="loyalty" min="0" max="3" value="2"></label>
+                <label>Regulatory Wind <input type="range" id="regwind" min="0" max="3" value="1"></label>
+                <label>Narrative Tension <input type="range" id="narrative" min="0" max="3" value="2"></label>
+                <label>Org Inertia (Sua) <input type="range" id="oi-self" min="0" max="3" value="2"></label>
+                <label>Org Inertia (Concorr.) <input type="range" id="oi-comp" min="0" max="3" value="2"></label>
+                <label>Shareholder Pressure <input type="range" id="shareholder" min="0" max="3" value="2"></label>
+                <label>Talent Field <input type="range" id="talent" min="0" max="3" value="2"></label>
+            </div>
+            <!-- PLACEMENT TAB -->
+            <div class="tab-panel" id="tab-placement">
+                <h3>Adicionar bolinhas</h3>
+                <div class="row"><button onclick="addMarble('player')">+ Sua</button><button onclick="addMarble('adversary')">+ Concorr.</button></div>
+                <label>Rótulo: <input type="text" id="marbleLabel" placeholder="ex: Core ERP"></label>
+                <button onclick="updateSelectedMarbleLabel()">Aplicar rótulo</button>
+                <h3>Stickers (selecione uma bolinha)</h3>
+                <div class="row">
+                    <label>Vulnerab.: <select id="vuln"><option value="">Nenhum</option><option value="high">Alta</option><option value="low">Baixa</option></select></label>
+                    <label>Lucrativ.: <select id="profit"><option value="">Nenhum</option><option value="loss">Prejuízo</option><option value="break">Equilíbrio</option><option value="profit">Lucro</option></select></label>
+                    <label>MDI: <select id="mdi"><option value="">Nenhum</option><option value="low">Baixo</option><option value="med">Médio</option><option value="high">Alto</option></select></label>
+                </div>
+                <div class="row">
+                    <label><input type="checkbox" id="sm"> Massa Estratégica</label>
+                    <label><input type="checkbox" id="anchor"> Âncora</label>
+                </div>
+                <button onclick="applyStickers()">Aplicar stickers</button>
+                <hr>
+                <h3>Setas de dependência</h3>
+                <div class="row"><button id="arrowBtn" onclick="toggleArrowMode()">Desenhar seta (Sólida)</button><select id="arrowType"><option value="solid">Sólida</option><option value="dashed">Tracejada</option></select></div>
+                <button onclick="clearArrows()">Limpar setas</button>
+                <hr>
+                <h3>Setas de forças invisíveis</h3>
+                <div class="row" style="flex-wrap:wrap; gap:4px;">
+                    <button style="background:#2563eb;font-size:0.7rem;padding:4px 6px;" onclick="startForceArrow('cg-self','#2563eb')">CG Própria</button>
+                    <button style="background:#dc2626;font-size:0.7rem;padding:4px 6px;" onclick="startForceArrow('cg-comp','#dc2626')">CG Concorr.</button>
+                    <button style="background:#f59e0b;font-size:0.7rem;padding:4px 6px;" onclick="startForceArrow('narrative','#f59e0b')">Narrativa</button>
+                    <button style="background:#7c3aed;font-size:0.7rem;padding:4px 6px;" onclick="startForceArrow('regulatory','#7c3aed')">Regulat.</button>
+                    <button style="background:#059669;font-size:0.7rem;padding:4px 6px;" onclick="startForceArrow('loyalty','#059669')">Lealdade</button>
+                    <button style="background:#0ea5e9;font-size:0.7rem;padding:4px 6px;" onclick="startForceArrow('talent','#0ea5e9')">Talento</button>
+                </div>
+                <p id="forceStatus" style="font-size:0.7rem; color:#dc2626;"></p>
+                <button onclick="clearForceArrows()">Limpar setas de força</button>
+                <hr>
+                <button onclick="resetBoard()">Reiniciar tabuleiro</button>
+            </div>
+            <!-- SIMULATION TAB -->
+            <div class="tab-panel" id="tab-simulation">
+                <div id="config-display" style="font-weight:bold; margin-bottom:10px; background:#e2e8f0; padding:4px 8px; border-radius:4px;"></div>
+                <div id="sff-summary" style="font-size:0.8rem; background:#f8fafc; padding:4px; border-radius:4px; margin-bottom:5px;"></div>
+                <label>Atirador: <select id="shooterSelect"><option value="">-- selecione --</option></select></label>
+                <label>Alvo: <select id="targetSelect"><option value="">-- nenhum (reposicionar) --</option></select></label>
+                <label>Impulso (IP): <select id="ip"><option value="low">Baixo</option><option value="med">Médio</option><option value="high">Alto</option></select></label>
+                <label>Ângulo (AI): <select id="ai"><option value="radial">Radial</option><option value="tangential">Tangencial</option></select></label>
+                <label>Intenção: <select id="intention"><option value="eliminate">Eliminar</option><option value="reposition">Reposicionar</option><option value="breakCluster">Quebrar cluster</option><option value="defend">Defender</option></select></label>
+                <div class="row"><button onclick="executePlayerMove()">Executar movimento</button><button onclick="statusQuo()">Status Quo</button></div>
+                <hr>
+                <h3>Controle do Adversário</h3>
+                <button id="advControlBtn" onclick="toggleAdversaryControl()">Ativar controle</button>
+                <div id="adversaryControls" style="display:none;">
+                    <label>Atirador Adv.: <select id="advShooterSelect"><option value="">-- selecione --</option></select></label>
+                    <label>Alvo: <select id="advTargetSelect"><option value="">-- nenhum --</option></select></label>
+                    <label>IP: <select id="advIP"><option value="low">Baixo</option><option value="med" selected>Médio</option><option value="high">Alto</option></select></label>
+                    <label>AI: <select id="advAI"><option value="radial" selected>Radial</option><option value="tangential">Tangencial</option></select></label>
+                    <label>Intenção: <select id="advIntention"><option value="eliminate" selected>Eliminar</option><option value="reposition">Reposicionar</option></select></label>
+                    <button onclick="executeAdversaryMove()">Executar movimento Adv.</button>
+                </div>
+                <hr>
+                <button onclick="nextTurn()">⏭ Próximo turno (aplicar gravidade)</button>
+                <button onclick="dissolveModel()" class="btn-danger">⚠ Dissolver modelo</button>
+                <h3>Registro de movimentos</h3>
+                <div id="log"></div>
+                <button onclick="clearLog()">Limpar log</button>
+            </div>
+            <!-- ARCHETYPE MAKER TAB -->
+            <div class="tab-panel" id="tab-archetypes">
+                <h3>Perfil do adversário (14 dimensões, ordinal)</h3>
+                <div id="archetypeSliders"></div>
+                <div class="row">
+                    <button onclick="loadPredefinedArchetype('sleepy')">Gigante Sonolento</button>
+                    <button onclick="loadPredefinedArchetype('impulsive')">Predador Impulsivo</button>
+                    <button onclick="loadPredefinedArchetype('cold')">Racional Frio</button>
+                    <button onclick="loadPredefinedArchetype('custom')">Custom (todos 3)</button>
+                </div>
+                <button onclick="saveArchetypeProfile()">Aplicar perfil ao adversário</button>
+                <button onclick="exportProfile()">Exportar perfil</button>
+                <button onclick="importProfile()">Importar perfil</button>
+            </div>
+            <hr>
+            <button onclick="exportState()">Exportar sessão (JSON)</button>
+            <button onclick="importState()">Importar sessão</button>
+        </div>
+        <div id="board-area">
+            <canvas id="board" width="700" height="700"></canvas>
+        </div>
     </div>
-    <!-- PLACEMENT TAB -->
-    <div class="tab-panel" id="tab-placement">
-      <h3>Teams & Marbles</h3>
-      <div class="row"><button onclick="addMarble('player')">+ Player Marble</button><button onclick="addMarble('adversary')">+ Adversary Marble</button></div>
-      <label>Marble Label: <input type="text" id="marbleLabel" placeholder="e.g., Core ERP"></label>
-      <button onclick="updateSelectedMarbleLabel()">Set Label</button>
-      <h3>Stickers</h3>
-      <div class="row">
-        <label>Vulnerability: <select id="vuln"><option value="">None</option><option value="high">High</option><option value="low">Low</option></select></label>
-        <label>Profitability: <select id="profit"><option value="">None</option><option value="loss">Loss</option><option value="break">Break‑even</option><option value="profit">Profitable</option></select></label>
-        <label>MDI: <select id="mdi"><option value="">None</option><option value="low">Low</option><option value="med">Medium</option><option value="high">High</option></select></label>
-      </div>
-      <div class="row"><label><input type="checkbox" id="sm"> Strategic Mass</label><label><input type="checkbox" id="anchor"> Anchor</label></div>
-      <button onclick="applyStickers()">Apply to Selected</button>
-      <hr>
-      <h3>Dependency Arrows</h3>
-      <div class="row"><button id="arrowBtn" onclick="toggleArrowMode()">Draw Arrow (Solid)</button><select id="arrowType"><option value="solid">Solid</option><option value="dashed">Dashed</option></select></div>
-      <button onclick="clearArrows()">Clear Arrows</button>
-      <hr>
-      <h3>Force Arrows</h3>
-      <div class="row" style="flex-wrap:wrap; gap:4px;">
-        <button style="background:#2563eb; font-size:0.75rem; padding:4px 8px;" onclick="startForceArrow('cg-self','#2563eb')">CG Self</button>
-        <button style="background:#dc2626; font-size:0.75rem; padding:4px 8px;" onclick="startForceArrow('cg-comp','#dc2626')">CG Comp</button>
-        <button style="background:#f59e0b; font-size:0.75rem; padding:4px 8px;" onclick="startForceArrow('narrative','#f59e0b')">Narrative</button>
-        <button style="background:#7c3aed; font-size:0.75rem; padding:4px 8px;" onclick="startForceArrow('regulatory','#7c3aed')">Regulatory</button>
-        <button style="background:#059669; font-size:0.75rem; padding:4px 8px;" onclick="startForceArrow('loyalty','#059669')">Loyalty</button>
-        <button style="background:#0ea5e9; font-size:0.75rem; padding:4px 8px;" onclick="startForceArrow('talent','#0ea5e9')">Talent</button>
-      </div>
-      <button onclick="clearForceArrows()">Clear Force Arrows</button>
-      <hr><button onclick="resetBoard()">Reset Board</button>
-    </div>
-    <!-- SIMULATION TAB -->
-    <div class="tab-panel" id="tab-simulation">
-      <div id="config-display" style="font-weight:bold; margin-bottom:10px; background:#e2e8f0; padding:4px 8px; border-radius:4px;"></div>
-      <div id="sff-summary" style="font-size:0.8rem; background:#f8fafc; padding:4px; border-radius:4px; margin-bottom:5px;"></div>
-      <label>Shooter: <select id="shooterSelect"><option value="">-- select marble --</option></select></label>
-      <label>Target: <select id="targetSelect"><option value="">-- none (reposition) --</option></select></label>
-      <label>Impulse Power: <select id="ip"><option value="low">Low</option><option value="med">Medium</option><option value="high">High</option></select></label>
-      <label>Angle of Incidence: <select id="ai"><option value="radial">Radial</option><option value="tangential">Tangential</option></select></label>
-      <label>Intention: <select id="intention"><option value="eliminate">Eliminate</option><option value="reposition">Reposition</option><option value="breakCluster">Break Cluster</option><option value="defend">Defend</option></select></label>
-      <div class="row"><button onclick="executePlayerMove()">Execute Move</button><button onclick="statusQuo()">Status Quo</button></div>
-      <hr>
-      <h3>Adversary Control</h3>
-      <button id="advControlBtn" onclick="toggleAdversaryControl()">Activate Adversary Control</button>
-      <div id="adversaryControls" style="display:none;">
-        <label>Adv. Shooter: <select id="advShooterSelect"><option value="">-- select --</option></select></label>
-        <label>Target: <select id="advTargetSelect"><option value="">-- none --</option></select></label>
-        <label>IP: <select id="advIP"><option value="low">Low</option><option value="med" selected>Medium</option><option value="high">High</option></select></label>
-        <label>AI: <select id="advAI"><option value="radial" selected>Radial</option><option value="tangential">Tangential</option></select></label>
-        <label>Intention: <select id="advIntention"><option value="eliminate" selected>Eliminate</option><option value="reposition">Reposition</option></select></label>
-        <button onclick="executeAdversaryMove()">Execute Adversary Move</button>
-      </div>
-      <hr>
-      <button onclick="nextTurn()">⏭ Next Turn (Apply Gravity Only)</button>
-      <button onclick="dissolveModel()" class="btn-danger">⚠ Dissolve Model</button>
-      <h3>Move Log</h3>
-      <div id="log"></div>
-      <button onclick="clearLog()">Clear Log</button>
-    </div>
-    <!-- ARCHETYPE MAKER TAB -->
-    <div class="tab-panel" id="tab-archetypes">
-      <h3>Adversary Profile (14 dimensions, ordinal)</h3>
-      <div id="archetypeSliders"></div>
-      <div class="row">
-        <button onclick="loadPredefinedArchetype('sleepy')">Sleepy Goliath</button>
-        <button onclick="loadPredefinedArchetype('impulsive')">Impulsive Predator</button>
-        <button onclick="loadPredefinedArchetype('cold')">Cold Rational</button>
-        <button onclick="loadPredefinedArchetype('custom')">Custom (all 3s)</button>
-      </div>
-      <button onclick="saveArchetypeProfile()">Apply Profile to Adversary</button>
-      <button onclick="exportProfile()">Export Profile</button>
-      <button onclick="importProfile()">Import Profile</button>
-    </div>
-    <hr>
-    <button onclick="exportState()">Export Session (JSON)</button>
-    <button onclick="importState()">Import Session</button>
-  </div>
-  <div id="board-area"><canvas id="board" width="700" height="700"></canvas></div>
-  <script src="competitive-circle.js"></script>
+    <script src="competitive-circle.js"></script>
 </body>
 </html>
